@@ -1,0 +1,11 @@
+{
+    "welcome": "REACH-telebot-এ স্বাগতম! আমি আপনার আর্থিক সহায়তা করতে এসেছি।",
+    "language_selected": "ভাষা বাংলা হিসাবে সেট করা হয়েছে!",
+    "select_language_prompt": "অনুগ্রহ করে আপনার ভাষা নির্বাচন করুন:",
+    "error_generic": "দুঃখিত, আমি এটি বুঝতে পারছি না। /help কমান্ড ব্যবহার করুন।",
+    "menu_title": "মূল মেনু",
+    "menu_item_goals": "আর্থিক লক্ষ্য নির্ধারণ",
+    "menu_item_expenses": "খরচ ট্র্যাক করুন",
+    "menu_item_advice": "আর্থিক পরামর্শ নিন",
+    "menu_item_settings": "সেটিংস"
+}

@@ -1,0 +1,5 @@
+python-telegram-bot[ext]>=20.0  # Make sure to use a recent version
+python-dotenv
+firebase-admin
+openai>=1.0  # Use the newer OpenAI library structure
+pyyaml     # Or use json if you prefer json for locales
