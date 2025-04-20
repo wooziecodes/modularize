@@ -36,8 +36,9 @@ def main() -> None:
     application.add_handler(common.menu_callback_handler)
     
     # Register conversation handlers
-    application.add_handler(onboarding.onboarding_handler)
+    # Goals handler should go first to make sure it catches all income assessment callbacks
     application.add_handler(goals.goal_handler)
+    application.add_handler(onboarding.onboarding_handler)
     
     # Register command handlers
     application.add_handler(CommandHandler('log', expenses.log_expense_command))
@@ -69,13 +70,13 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(onboarding.family_callback, pattern='^family_'))
     application.add_handler(CallbackQueryHandler(onboarding.confirmation_callback, pattern='^confirm_'))
     
-    # Add a debug callback handler to catch any unhandled callbacks
-    async def debug_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Handler for unhandled callbacks
+    async def unhandled_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         query = update.callback_query
         await query.answer()
-        logger.info(f"Debug callback: {query.data}")
+        logger.warning(f"Unhandled callback pattern: {query.data}")
         
-    application.add_handler(CallbackQueryHandler(debug_callback))
+    application.add_handler(CallbackQueryHandler(unhandled_callback))
     
     # Custom message handler for goal amount
     async def custom_text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -128,4 +129,4 @@ async def handle_text_message(update, context):
         await update.message.reply_text(help_text)
 
 if __name__ == '__main__':
-    main()
+    main() 

@@ -106,7 +106,8 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Process different menu options
     if callback_data == "menu_set_goal":
         # Redirect to goals module
-        logger.info(f"User {user_id} selected menu_set_goal")
+        logger.info(f"🎯 User {user_id} selected SET GOAL MENU OPTION")
+        logger.info(f"👉 Now redirecting to the goal setting flow which should start with income assessment")
         from handlers import goals
         await goals.start_goal_setting(update, context)
         

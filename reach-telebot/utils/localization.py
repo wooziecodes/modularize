@@ -23,11 +23,15 @@ def load_translations():
         else:
             logging.warning(f"Translation file not found for language '{lang_code}' at {filepath}")
 
-def get_text(key: str, lang_code: str = DEFAULT_LANGUAGE) -> str:
+def get_text(key: str, lang_code: str = DEFAULT_LANGUAGE, return_keys: bool = False) -> str:
     """Gets translated text for a given key and language code."""
     # If translations haven't been loaded yet, load them
     if not _translations:
         load_translations()
+    
+    # Special case: If return_keys is True, return all available keys
+    if return_keys:
+        return _translations.get(lang_code, {}).keys()
         
     # Fallback to default language if the requested language is not available
     lang_to_use = lang_code if lang_code in _translations else DEFAULT_LANGUAGE
@@ -37,6 +41,12 @@ def get_text(key: str, lang_code: str = DEFAULT_LANGUAGE) -> str:
         logging.error(f"No translations available for language: {lang_to_use}")
         return f"[{key}]"
     
+    # Check if the key exists
+    if key not in _translations.get(lang_to_use, {}):
+        logging.error(f"⚠️ MISSING TRANSLATION KEY: '{key}' for language: {lang_to_use}")
+        # Print available keys for debugging
+        logging.debug(f"Available keys: {list(_translations.get(lang_to_use, {}).keys())[:10]}...")
+        
     # Return the translation or a placeholder if the key is missing
     return _translations.get(lang_to_use, {}).get(key, f"[{key}]")
 

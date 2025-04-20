@@ -10,12 +10,9 @@ def initialize_openai():
     global _client
     if _client is None:
         try:
-            # Check if we're in development/test mode
-            if OPENAI_API_KEY.startswith("sk-proj-") or OPENAI_API_KEY.startswith("test_"):
-                logging.info("Using OpenAI in development/test mode")
-            
+            # Initialize with only the required parameters to avoid proxies error
             _client = OpenAI(api_key=OPENAI_API_KEY)
-            logging.info("OpenAI client initialized.")
+            logging.info("OpenAI client initialized successfully.")
         except Exception as e:
             logging.error(f"Failed to initialize OpenAI client: {e}", exc_info=True)
             logging.warning("Continuing without OpenAI for development")
@@ -35,74 +32,54 @@ def get_behavioral_goal_suggestions(income: str, family_needs: str, current_situ
     Returns:
         A list of suggested goals with behavioral science rationale
     """
+    
     if not _client:
         initialize_openai()
         if not _client:
-            # Provide mock response for development
-            logging.warning("Using mock goal suggestions for development")
-            return [
-                {"goal": "Emergency Savings", "description": "Create a safety net for unexpected expenses", "rationale": "Helps reduce stress and provides security"},
-                {"goal": "Send Money Home", "description": "Regular remittance to support family", "rationale": "Strengthens family bonds and fulfills responsibilities"},
-                {"goal": "Education Fund", "description": "Save for family education expenses", "rationale": "Investing in future opportunities and growth"}
-            ]
+            logging.error("OpenAI client initialization failed")
+            raise Exception("Failed to initialize OpenAI client")
 
     try:
-        # If we're in development/test mode, return a mock response
-        if OPENAI_API_KEY.startswith("sk-proj-") or OPENAI_API_KEY.startswith("test_"):
-            logging.info("Using mock goal suggestions for development")
-            mock_goals = {
-                "en": [
-                    {"goal": "Emergency Savings", "description": "Create a safety net for unexpected expenses", "rationale": "Helps reduce stress and provides security"},
-                    {"goal": "Send Money Home", "description": "Regular remittance to support family", "rationale": "Strengthens family bonds and fulfills responsibilities"},
-                    {"goal": "Education Fund", "description": "Save for family education expenses", "rationale": "Investing in future opportunities and growth"}
-                ],
-                "bn": [
-                    {"goal": "জরুরী সঞ্চয়", "description": "অপ্রত্যাশিত খরচের জন্য সুরক্ষা তৈরি করুন", "rationale": "চাপ কমাতে এবং নিরাপত্তা প্রদান করে"},
-                    {"goal": "বাড়িতে টাকা পাঠান", "description": "পরিবারকে সমর্থন করার জন্য নিয়মিত অর্থ প্রেরণ", "rationale": "পারিবারিক বন্ধন শক্তিশালী করে এবং দায়িত্ব পূরণ করে"},
-                    {"goal": "শিক্ষা তহবিল", "description": "পরিবারের শিক্ষা খরচের জন্য সঞ্চয়", "rationale": "ভবিষ্যতের সুযোগ এবং বৃদ্ধিতে বিনিয়োগ করা"}
-                ],
-                "ta": [
-                    {"goal": "அவசர சேமிப்பு", "description": "எதிர்பாராத செலவுகளுக்கான பாதுகாப்பு வலை", "rationale": "மன அழுத்தத்தைக் குறைக்க உதவுகிறது மற்றும் பாதுகாப்பை வழங்குகிறது"},
-                    {"goal": "வீட்டிற்கு பணம் அனுப்புங்கள்", "description": "குடும்பத்திற்கு ஆதரவளிக்க வழக்கமான பணம் அனுப்புதல்", "rationale": "குடும்ப பிணைப்புகளை வலுப்படுத்துகிறது மற்றும் பொறுப்புகளை நிறைவேற்றுகிறது"},
-                    {"goal": "கல்வி நிதி", "description": "குடும்ப கல்விச் செலவுகளுக்காக சேமிக்கவும்", "rationale": "எதிர்கால வாய்ப்புகள் மற்றும் வளர்ச்சியில் முதலீடு செய்தல்"}
-                ]
-            }
-            return mock_goals.get(lang_code, mock_goals["en"])
-            
         # Create a detailed system prompt using behavioral science principles
-        system_prompt = f"""
-        You are a financial goal advisor for migrant workers in Singapore using behavioral science principles (specifically the COM-B model: Capability, Opportunity, Motivation -> Behavior).
-        
-        Create contextual, meaningful financial goal suggestions based on the user's income level and family needs.
-        
-        Use these behavioral science principles:
-        1. Make goals concrete and specific (rather than abstract)
-        2. Connect goals to family values and relationships
-        3. Focus on small wins and manageable steps
-        4. Create psychological ownership over goals
-        5. Reduce mental effort required for decision making
-        
-        Based on the provided income and family information, generate 3-4 contextual financial goals in {lang_code} language that would be most appropriate.
+        system_prompt = "You are a financial goal advisor for migrant workers in Singapore using behavioral science principles (specifically the COM-B model: Capability, Opportunity, Motivation -> Behavior).\n\n" + \
+        "Create contextual, meaningful financial goal suggestions based on the user's income level and family needs.\n\n" + \
+        "Use these behavioral science principles:\n" + \
+        "1. Make goals concrete and specific (rather than abstract)\n" + \
+        "2. Connect goals to family values and relationships\n" + \
+        "3. Focus on small wins and manageable steps\n" + \
+        "4. Create psychological ownership over goals\n" + \
+        "5. Reduce mental effort required for decision making\n\n" + \
+        f"Based on the provided income and family information, generate 3-4 contextual financial goals in {lang_code} language that would be most appropriate.\n\n" + \
+        "IMPORTANT: Return ONLY a JSON array with objects containing:\n" + \
+        "- \"goal\": Short goal name (3-5 words)\n" + \
+        "- \"description\": Brief description of the goal (10-15 words)\n" + \
+        "- \"rationale\": Why this goal matters using behavioral science (10-15 words)\n\n" + \
+        "The goals should be specific to the migrant worker context and address both short-term needs and long-term aspirations."
 
-        IMPORTANT: Return ONLY a JSON array with objects containing:
-        - "goal": Short goal name (3-5 words)
-        - "description": Brief description of the goal (10-15 words)
-        - "rationale": Why this goal matters using behavioral science (10-15 words)
-        
-        The goals should be specific to the migrant worker context and address both short-term needs and long-term aspirations.
-        """
-        
         # Create a user prompt with the specific information
         user_prompt = f"Income: {income}\nFamily needs: {family_needs}\nCurrent situation: {current_situation}"
         
-        response = _client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            response_format={"type": "json_object"}
-        )
+        logging.info(f"⭐⭐⭐ CALLING OPENAI API for personalized goal suggestions")
+        # Create the response - manually handle the JSON format to avoid errors
+        try:
+            response = _client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                response_format={"type": "json_object"}
+            )
+        except Exception as e:
+            logging.error(f"Error with response_format parameter: {e}")
+            # Fallback without response_format if it's not supported
+            response = _client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt + "\nReturn your response as a valid JSON object."},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
         
         if response.choices and len(response.choices) > 0:
             result = response.choices[0].message.content.strip()
@@ -141,21 +118,10 @@ def get_ai_advice(prompt: str, lang_code: str = "en", model: str = "gpt-3.5-turb
     if not _client:
         initialize_openai()
         if not _client:
-            # Provide mock response for development
-            logging.warning("Using mock AI advice response for development")
-            return f"[DEVELOPMENT MODE] Mock financial advice about: {prompt}"
+            logging.error("OpenAI client initialization failed")
+            raise Exception("Failed to initialize OpenAI client")
 
     try:
-        # If we're in development/test mode, return a mock response
-        if OPENAI_API_KEY.startswith("sk-proj-") or OPENAI_API_KEY.startswith("test_"):
-            logging.info("Using mock AI advice response for development")
-            mock_responses = {
-                "en": f"[DEVELOPMENT MODE] Here is some financial advice about {prompt}: Save regularly and avoid unnecessary expenses.",
-                "bn": f"[DEVELOPMENT MODE] আর্থিক পরামর্শ: নিয়মিত সঞ্চয় করুন।", 
-                "ta": f"[DEVELOPMENT MODE] நிதி ஆலோசனை: தொடர்ந்து சேமியுங்கள்."
-            }
-            return mock_responses.get(lang_code, mock_responses["en"])
-            
         response = _client.chat.completions.create(
             model=model,
             messages=[
@@ -186,55 +152,33 @@ def parse_expense(text: str, lang_code: str = "en") -> dict:
     if not _client:
         initialize_openai()
         if not _client:
-            # Provide mock response for development
-            logging.warning("Using mock expense parsing for development")
-            return {"amount": 25, "currency": "USD", "category": "food", "description": f"Mock parsed expense: {text}"}
+            logging.error("OpenAI client initialization failed")
+            raise Exception("Failed to initialize OpenAI client")
 
     try:
-        # If we're in development/test mode, return a mock response
-        if OPENAI_API_KEY.startswith("sk-proj-") or OPENAI_API_KEY.startswith("test_"):
-            logging.info("Using mock expense parsing for development")
-            
-            # Create a simple mock parser based on keywords
-            import re
-            
-            # Default values
-            mock_result = {
-                "amount": 25, 
-                "currency": "USD", 
-                "category": "miscellaneous", 
-                "description": f"Mock parsed expense: {text}"
-            }
-            
-            # Check for numbers in the text for amount
-            numbers = re.findall(r'\d+', text)
-            if numbers:
-                mock_result["amount"] = int(numbers[0])
-                
-            # Check for currency
-            if "USD" in text or "$" in text:
-                mock_result["currency"] = "USD"
-            elif "EUR" in text or "€" in text:
-                mock_result["currency"] = "EUR"
-                
-            # Check for category
-            if any(word in text.lower() for word in ["food", "eat", "meal", "grocery"]):
-                mock_result["category"] = "food"
-            elif any(word in text.lower() for word in ["transport", "bus", "train", "taxi"]):
-                mock_result["category"] = "transportation"
-            elif any(word in text.lower() for word in ["house", "rent", "apartment"]):
-                mock_result["category"] = "housing"
-                
-            return mock_result
-            
-        response = _client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": f"Extract expense information from the following text in {lang_code} language. Return ONLY a JSON object with amount (number), currency (string), category (string), and description (string)."},
-                {"role": "user", "content": text}
-            ],
-            response_format={"type": "json_object"}
-        )
+        try:
+            response = _client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": f"Extract expense information from the following text in {lang_code} language. Return ONLY a JSON object with amount (number), currency (string), category (string), and description (string)."},
+                    {"role": "user", "content": text}
+                ],
+                response_format={"type": "json_object"}
+            )
+        except Exception as e:
+            logging.error(f"Error with expense parsing response_format: {e}")
+            # Fallback without response_format if it's not supported
+            try:
+                response = _client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": f"Extract expense information from the following text in {lang_code} language. Return ONLY a JSON object with amount (number), currency (string), category (string), and description (string). The response must be valid JSON."},
+                        {"role": "user", "content": text}
+                    ]
+                )
+            except Exception as e2:
+                logging.error(f"Error in fallback expense parsing: {e2}")
+                return {"error": f"Error parsing expense: {str(e2)}"}
         if response.choices and len(response.choices) > 0:
             result = response.choices[0].message.content.strip()
             logging.debug(f"Parsed expense: {result}")

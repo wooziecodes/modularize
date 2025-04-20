@@ -42,6 +42,10 @@
     "custom_goal_option": "✏️ Choose a different goal",
     "custom_goal_prompt": "Choose a different type of financial goal:",
     
+    "goal_type_remittance": "🏠 Send Money Home Regularly",
+    "goal_type_education": "📚 Save for Family Education",
+    "goal_type_health": "❤️ Save for Health Needs",
+    
     "goal_rationale_prefix": "💡 Why this matters:",
     
     "family_goal_question": "🏠 What goal do you want for your family?",
@@ -55,11 +59,11 @@
     "goal_amount_question_education": "💵 How much for education? Just type a number (example: 500)",
     "goal_amount_question_health": "💵 How much for health needs? Just type a number (example: 500)",
     
-    "goal_question": "What is your main financial goal?",
-    "goal_option_1": "Save for emergency fund",
-    "goal_option_2": "Send money to family",
-    "goal_option_3": "Pay off debt",
-    "goal_option_4": "Save for a major purchase",
+    "goal_question": "What is most important for your family's finances?",
+    "goal_option_1": "Send more money to family back home",
+    "goal_option_2": "Save for emergency medical needs",
+    "goal_option_3": "Build savings for children's education",
+    "goal_option_4": "Have money for important family events",
     
     "debt_question": "What is your current debt situation?",
     "debt_option_1": "No debt",

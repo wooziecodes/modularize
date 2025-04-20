@@ -6,45 +6,24 @@ import logging
 import os
 
 _db = None
-_mock_data = {}  # For development/testing
 
 def initialize_firebase():
     """Initializes the Firebase Admin SDK."""
     global _db
     if _db is None:
         try:
-            # Check if we're using a mock setup
-            if os.path.basename(FIREBASE_SERVICE_ACCOUNT_KEY_PATH) == 'test_firebase_key.json':
-                logging.info("Using mock Firebase setup for development/testing")
-                # Mock is handled in the other functions
-                return
-                
             cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_KEY_PATH)
             firebase_admin.initialize_app(cred)
             _db = firestore.client()
             logging.info("Firebase initialized successfully.")
         except Exception as e:
             logging.error(f"Failed to initialize Firebase: {e}", exc_info=True)
-            logging.warning("Continuing with mock Firebase for development")
-            # We'll continue without raising an exception
+            raise Exception(f"Failed to initialize Firebase: {e}")
 
 def get_user_data(user_id: int) -> dict:
-    """Retrieves user data from Firestore or mock data store."""
-    # Check if we're using a mock setup
-    if os.path.basename(FIREBASE_SERVICE_ACCOUNT_KEY_PATH) == 'test_firebase_key.json':
-        # Return mock data for development/testing
-        user_key = str(user_id)
-        if user_key not in _mock_data:
-            _mock_data[user_key] = {'language': DEFAULT_LANGUAGE, 'profile': {}, 'goals': [], 'expenses': []}
-        return _mock_data[user_key]
-        
+    """Retrieves user data from Firestore."""
     if not _db:
-        # If we're not in mock mode but db is None, this is an error
-        logging.warning("Firebase not initialized, using mock data")
-        user_key = str(user_id)
-        if user_key not in _mock_data:
-            _mock_data[user_key] = {'language': DEFAULT_LANGUAGE, 'profile': {}, 'goals': [], 'expenses': []}
-        return _mock_data[user_key]
+        initialize_firebase()
         
     try:
         user_ref = _db.collection('users').document(str(user_id))
@@ -59,33 +38,9 @@ def get_user_data(user_id: int) -> dict:
         return {'language': DEFAULT_LANGUAGE, 'profile': {}, 'goals': [], 'expenses': []}
 
 def update_user_data(user_id: int, data: dict):
-    """Updates user data in Firestore or mock data store."""
-    # Check if we're using a mock setup
-    if os.path.basename(FIREBASE_SERVICE_ACCOUNT_KEY_PATH) == 'test_firebase_key.json':
-        user_key = str(user_id)
-        if user_key not in _mock_data:
-            _mock_data[user_key] = {'language': DEFAULT_LANGUAGE, 'profile': {}, 'goals': [], 'expenses': []}
-        
-        # Merge the data
-        for key, value in data.items():
-            _mock_data[user_key][key] = value
-            
-        logging.debug(f"[MOCK] Updated data for user {user_id}")
-        return
-        
+    """Updates user data in Firestore."""
     if not _db:
-        # If we're not in mock mode but db is None, use mock data
-        logging.warning("Firebase not initialized, using mock data")
-        user_key = str(user_id)
-        if user_key not in _mock_data:
-            _mock_data[user_key] = {'language': DEFAULT_LANGUAGE, 'profile': {}, 'goals': [], 'expenses': []}
-        
-        # Merge the data
-        for key, value in data.items():
-            _mock_data[user_key][key] = value
-            
-        logging.debug(f"[MOCK] Updated data for user {user_id}")
-        return
+        initialize_firebase()
     
     try:
         user_ref = _db.collection('users').document(str(user_id))

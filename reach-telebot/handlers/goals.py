@@ -20,7 +20,14 @@ async def start_goal_setting(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """Starts the enhanced goal setting process with multiple assessments for context."""
     user_id = update.effective_user.id
     lang_code = get_user_language(user_id)
-    logger.info(f"Starting goal setting for user {user_id}")
+    logger.info(f"====== STARTING GOAL SETTING FLOW for user {user_id} ======")
+    logger.info(f"🔍 This should lead through: income → family → spending → personalized goals")
+    
+    # Check if the function was called directly or via a callback
+    if update.callback_query:
+        logger.info(f"👉 Called via callback: {update.callback_query.data}")
+    else:
+        logger.info(f"👉 Called directly via command")
     
     # Clear any previous goal data to start fresh
     for key in list(context.user_data.keys()):
@@ -57,7 +64,12 @@ async def income_assessment_callback(update: Update, context: ContextTypes.DEFAU
     user_id = query.from_user.id
     lang_code = get_user_language(user_id)
     
-    logger.info(f"Income assessment callback: {query.data}")
+    logger.info(f"⭐ INCOME ASSESSMENT CALLBACK TRIGGERED: {query.data}")
+    logger.info(f"👉 This should now proceed to family assessment")
+    
+    # Debug the user's current state
+    logger.info(f"Current conversation state: {context.user_data.get('conversation_state')}")
+    logger.info(f"User data keys: {list(context.user_data.keys())}")
     
     # Save income level
     income_level = int(query.data.split('_')[1])
@@ -182,6 +194,7 @@ async def spending_assessment_callback(update: Update, context: ContextTypes.DEF
     
     # Get personalized goal suggestions from OpenAI as originally intended
     try:
+        logger.info("⭐⭐⭐ ATTEMPTING TO GET PERSONALIZED GOAL SUGGESTIONS FROM OPENAI ⭐⭐⭐")
         # Call OpenAI for personalized suggestions using the behavioral science context
         goal_suggestions = get_behavioral_goal_suggestions(
             income=income_text,
@@ -190,28 +203,13 @@ async def spending_assessment_callback(update: Update, context: ContextTypes.DEF
             lang_code=lang_code
         )
         logger.info(f"Received {len(goal_suggestions)} goal suggestions from OpenAI")
+        # Log the actual suggestions for debugging
+        logger.info(f"Suggestion details: {goal_suggestions}")
         
-        # If OpenAI fails to provide suggestions, add fallback suggestions
+        # If OpenAI fails to provide suggestions, log error and raise exception
         if not goal_suggestions:
-            logger.warning("OpenAI returned empty suggestions, using fallbacks")
-            # Create fallback suggestions
-            goal_suggestions = [
-                {
-                    "goal": "Emergency Savings",
-                    "description": "Create a safety net for unexpected expenses",
-                    "rationale": "Reduces stress during emergencies"
-                },
-                {
-                    "goal": "Family Support",
-                    "description": "Set aside money for family needs",
-                    "rationale": "Strengthens family security" 
-                },
-                {
-                    "goal": "Health Fund",
-                    "description": "Save for medical expenses",
-                    "rationale": "Protects your ability to work and earn"
-                }
-            ]
+            logger.error("OpenAI returned empty suggestions")
+            raise Exception("Failed to get goal suggestions from OpenAI")
         
         # Store suggestions for later use
         context.user_data['goal_suggestions'] = goal_suggestions
@@ -262,7 +260,8 @@ async def spending_assessment_callback(update: Update, context: ContextTypes.DEF
         await query.edit_message_text(text=f"{goal_prompt}\n\n{behavioral_context}", reply_markup=reply_markup)
         
     except Exception as e:
-        logger.error(f"Error getting goal suggestions: {e}", exc_info=True)
+        logger.error(f"❌❌❌ ERROR GETTING PERSONALIZED GOALS: {type(e).__name__}: {e}", exc_info=True)
+        logger.error(f"User context data: {context.user_data}")
         # Fallback to default goal types if OpenAI integration fails
         keyboard = [
             [InlineKeyboardButton(get_text("family_goal_savings", lang_code), callback_data="goal_type_savings")],
@@ -921,11 +920,11 @@ async def share_goal_with_family(update: Update, context: ContextTypes.DEFAULT_T
         get_text("share_message_instructions", lang_code)
     )
 
-# Define a simple handler class to log incoming patterns
-class DebugCallbackHandler(CallbackQueryHandler):
+# Define a handler class for callbacks with additional logging
+class LoggingCallbackHandler(CallbackQueryHandler):
     async def handle_update(self, update, dispatcher, check_result, context):
         if update.callback_query:
-            logger.info(f"DEBUG: Handling callback: {update.callback_query.data}")
+            logger.debug(f"Handling callback: {update.callback_query.data}")
         return await super().handle_update(update, dispatcher, check_result, context)
 
 # Create the goal setting conversation handler with more verbose debugging
@@ -935,24 +934,24 @@ goal_handler = ConversationHandler(
         CallbackQueryHandler(start_goal_setting, pattern='^menu_set_goals')
     ],
     states={
-        INCOME_ASSESSMENT: [DebugCallbackHandler(income_assessment_callback, pattern='^income_')],
-        FAMILY_ASSESSMENT: [DebugCallbackHandler(family_assessment_callback, pattern='^family_needs_')],
-        SPENDING_ASSESSMENT: [DebugCallbackHandler(spending_assessment_callback, pattern='^spending_')],
+        INCOME_ASSESSMENT: [LoggingCallbackHandler(income_assessment_callback, pattern='^income_[1-5]$')],
+        FAMILY_ASSESSMENT: [LoggingCallbackHandler(family_assessment_callback, pattern='^family_needs_')],
+        SPENDING_ASSESSMENT: [LoggingCallbackHandler(spending_assessment_callback, pattern='^spending_')],
         GOAL_TYPE: [
             # Add suggestion handlers first (more specific)
-            DebugCallbackHandler(goal_suggestion_callback, pattern='^goal_sugg_'),
-            DebugCallbackHandler(goal_type_callback, pattern='^goal_type_'),
-            DebugCallbackHandler(goal_type_callback, pattern='^goal_custom$')
+            LoggingCallbackHandler(goal_suggestion_callback, pattern='^goal_sugg_'),
+            LoggingCallbackHandler(goal_type_callback, pattern='^goal_type_'),
+            LoggingCallbackHandler(goal_type_callback, pattern='^goal_custom$')
         ],
         GOAL_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, goal_amount_handler)],
-        GOAL_DEADLINE: [DebugCallbackHandler(goal_deadline_callback, pattern='^deadline_')],
+        GOAL_DEADLINE: [LoggingCallbackHandler(goal_deadline_callback, pattern='^deadline_')],
         GOAL_STEPS: [
-            DebugCallbackHandler(goal_steps_callback, pattern='^steps_'),
+            LoggingCallbackHandler(goal_steps_callback, pattern='^steps_'),
             MessageHandler(filters.TEXT & ~filters.COMMAND, goal_custom_steps_handler)
         ],
-        GOAL_CONFIRMATION: [DebugCallbackHandler(goal_confirmation_callback, pattern='^goal_confirm_')],
+        GOAL_CONFIRMATION: [LoggingCallbackHandler(goal_confirmation_callback, pattern='^goal_confirm_')],
         MICRO_GOALS: [
-            DebugCallbackHandler(goal_confirmation_callback, pattern='^micro_goal_confirm_')
+            LoggingCallbackHandler(goal_confirmation_callback, pattern='^micro_goal_confirm_')
         ]
     },
     fallbacks=[CommandHandler('cancel', cancel)]
